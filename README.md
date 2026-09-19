@@ -6,6 +6,8 @@ XEN-GEN1-V is the **video generation model** in the XEN family. It is designed f
 
 - Text-to-video generation
 - Prompt-conditioned video generation
+- Image-to-video generation using a reference image
+- Adjustable motion/variation strength
 - Local CUDA/CPU inference
 - Train on your own video + caption dataset
 - MP4 output
@@ -122,9 +124,21 @@ Example:
 
 XEN-GEN1-V can be packaged for a Hugging Face Space. A GPU Space is recommended because video diffusion is significantly more computationally expensive than text generation.
 
+## Image-to-video
+
+Use `--image` to turn a reference image into a short generated video. The current implementation uses the reference image as the visual starting point and preserves the reference composition in the first frame. This is an initial GEN1-V feature; stronger motion consistency will require dedicated image-to-video training.
+
+Example:
+
+```bash
+python inference/video_generate.py --model-dir outputs/xen-gen1-v --image input.png --prompt "the subject slowly moves through a futuristic city" --duration 5 --fps 8 --strength 0.65
+```
+
+Lower `--strength` keeps more of the reference appearance. Higher values allow more variation.
+
 ## Current scope
 
-Current GEN1-V focuses on **text-to-video**. Image-to-video is reserved for a future revision.
+GEN1-V supports text-to-video and an initial image-to-video workflow. Image-to-video quality will improve as dedicated reference-conditioned training is added.
 
 ## Performance and VRAM
 
