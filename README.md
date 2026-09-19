@@ -14,6 +14,12 @@ XEN-GEN1-V is the **video generation model** in the XEN family. It is designed f
 - 1–15 second generation interface
 - Hugging Face-compatible packaging
 
+## Supported platforms
+
+- Windows
+- Linux
+- macOS
+
 ## Requirements
 
 Recommended development hardware:
@@ -24,20 +30,23 @@ Recommended development hardware:
 - Python 3.10+
 - PyTorch 2.4+
 
-Install:
+### Windows
 
-```bash
+```powershell
 python -m venv .venv
 .venv\\Scripts\\activate
 pip install -r requirements.txt
 ```
 
-On Linux/macOS:
+### Linux / macOS
 
 ```bash
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+If your system uses `python` for Python 3, you can use `python` instead of `python3`.
 
 ## Generate a video
 
