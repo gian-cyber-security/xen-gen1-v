@@ -1,3 +1,16 @@
+---
+license: mit
+library_name: pytorch
+pipeline_tag: text-to-video
+language:
+  - en
+tags:
+  - xens
+  - xen
+  - pytorch
+  - custom-architecture
+---
+
 # XEN-GEN1-V
 
 XEN-GEN1-V is the **video generation model** in the XEN family. It is designed for local text-to-video generation with a small video diffusion architecture.
