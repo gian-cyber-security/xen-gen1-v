@@ -5,6 +5,7 @@ from PIL import Image
 from model.tokenizer import XENTokenizer
 from model.video_conditioner import XENVideoTextEncoder
 from model.video_model import XENVideoModel
+from tools.prompt_search import enrich_prompt
 def ab(t): return torch.cos(((t.float()/999)+.008)/1.008*math.pi/2).pow(2).clamp(1e-4,.9999)
 def load_image(path,size,device):
  im=Image.open(path).convert("RGB").resize((size,size))
@@ -18,7 +19,8 @@ def main():
  p.add_argument("--strength",type=float,default=0.65,help="Motion/edit strength, lower preserves the reference more")
  p.add_argument("--output",default="outputs/xen-gen1-v/generated.mp4"); p.add_argument("--duration",type=float,default=2)
  p.add_argument("--frames",type=int); p.add_argument("--size",type=int,default=128); p.add_argument("--steps",type=int,default=50)
- p.add_argument("--seed",type=int,default=42); p.add_argument("--fps",type=int,default=8); a=p.parse_args()
+ p.add_argument("--seed",type=int,default=42); p.add_argument("--fps",type=int,default=8); p.add_argument("--web-search",action="store_true"); p.add_argument("--no-web-search",action="store_true"); a=p.parse_args()
+ if a.web_search and not a.no_web_search: a.prompt=enrich_prompt(a.prompt)
  if not 1<=a.duration<=15: raise ValueError("--duration must be between 1 and 15 seconds")
  if not 0.05<=a.strength<=1.0: raise ValueError("--strength must be between 0.05 and 1.0")
  frames=a.frames or max(2,round(a.duration*a.fps))
