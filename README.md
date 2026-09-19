@@ -119,6 +119,7 @@ python training/video_train.py --data datasets/video_data.jsonl --output outputs
 ```
 
 The initial target is 16 frames at 128x128 because this is much more practical for an RTX 4060 8GB than a large video model.
+The training script accumulates gradients over `--grad-accumulation` micro-batches and writes resumable native PyTorch checkpoints every 500 optimizer steps. Resume with `--resume path/to/checkpoint-N.pt` when a real dataset and suitable runtime are available. This repository is currently **not yet trained**; training is pending a real dataset and CUDA-capable environment.
 
 ## Dataset format
 
