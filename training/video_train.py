@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse,json,random
+import argparse,json,random,sys
 from pathlib import Path
 import imageio.v3 as iio,numpy as np,torch
 import torch.nn.functional as F
@@ -34,9 +34,33 @@ def update_ema(ema,model,decay):
         for e,p in zip(ema.parameters(),model.parameters()):
             e.mul_(decay).add_(p,alpha=1-decay)
 
+def prepare_openvid(dataset_id, max_samples, cache_dir, pipeline_path):
+    sys.path.insert(0, pipeline_path)
+    from xenpipe.training import iter_training_samples
+    out=Path(cache_dir)/"gen1-v-training.jsonl"
+    out.parent.mkdir(parents=True,exist_ok=True)
+    count=0
+    with out.open("w",encoding="utf-8") as f:
+        for sample in iter_training_samples(
+            dataset_id,target="gen1-v",split="train",
+            media_column="video",caption_column="caption",
+            max_samples=max_samples,cache_dir=str(Path(cache_dir)/"openvid"),
+        ):
+            f.write(json.dumps({"video":sample["video"],"caption":sample["caption"]},ensure_ascii=False)+"\n")
+            count+=1
+            print(f"OpenVid prepared: {count}/{max_samples}",flush=True)
+    if count==0: raise ValueError("OpenVid returned no usable videos")
+    print(f"OpenVid ready: {count} videos -> {out}",flush=True)
+    return str(out)
+
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("--data",default="datasets/video_data.jsonl"); p.add_argument("--output",default="outputs/xen-gen1-v")
+    p.add_argument("--data",default="datasets/video_data.jsonl")
+    p.add_argument("--dataset",default=None)
+    p.add_argument("--max-samples",type=int,default=1000)
+    p.add_argument("--pipeline-path",default="/content/xen-dataset-pipeline")
+    p.add_argument("--cache-dir",default="/content/xen-openvid-cache")
+    p.add_argument("--output",default="outputs/xen-gen1-v")
     p.add_argument("--frames",type=int,default=16); p.add_argument("--size",type=int,default=128)
     p.add_argument("--batch-size",type=int,default=1); p.add_argument("--lr",type=float,default=2e-4)
     p.add_argument("--steps",type=int,default=20000); p.add_argument("--grad-accumulation",type=int,default=8)
@@ -45,7 +69,8 @@ def main():
     random.seed(42); torch.manual_seed(42)
     if torch.cuda.is_available(): torch.cuda.manual_seed_all(42)
     t=XENTokenizer(); t.fit()
-    dl=DataLoader(DS(a.data,t,a.frames,a.size),batch_size=a.batch_size,shuffle=True,collate_fn=collate)
+    data=prepare_openvid(a.dataset,a.max_samples,a.cache_dir,a.pipeline_path) if a.dataset else a.data
+    dl=DataLoader(DS(data,t,a.frames,a.size),batch_size=a.batch_size,shuffle=True,collate_fn=collate)
     d=torch.device("cuda" if torch.cuda.is_available() else "cpu")
     m=XENVideoModel().to(d); c=XENVideoTextEncoder().to(d)
     ema=XENVideoModel().to(d); ema.load_state_dict(m.state_dict()); ema.eval()
