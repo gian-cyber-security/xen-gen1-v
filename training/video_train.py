@@ -1,7 +1,7 @@
 from __future__ import annotations
 import argparse,json,random,sys
 from pathlib import Path
-import imageio.v3 as iio,numpy as np,torch
+import imageio.v2 as imageio,numpy as np,torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset,DataLoader
 from model.tokenizer import XENTokenizer
@@ -15,7 +15,12 @@ class DS(Dataset):
         self.t=t; self.f=frames; self.s=size
     def __len__(self): return len(self.rows)
     def __getitem__(self,i):
-        path,cap=self.rows[i]; arr=np.asarray(list(iio.imiter(path,plugin="ffmpeg")))
+        path,cap=self.rows[i]
+        reader=imageio.get_reader(path,format="ffmpeg")
+        try:
+            arr=np.asarray([frame for frame in reader])
+        finally:
+            reader.close()
         if arr.ndim!=4 or arr.shape[-1]<3: raise ValueError(f"Invalid video: {path}")
         n=len(arr)
         if n<self.f: idx=np.linspace(0,n-1,self.f).round().astype(int)
@@ -40,15 +45,20 @@ def prepare_openvid(dataset_id, max_samples, cache_dir, pipeline_path):
     out=Path(cache_dir)/"gen1-v-training.jsonl"
     out.parent.mkdir(parents=True,exist_ok=True)
     count=0
-    with out.open("w",encoding="utf-8") as f:
-        for sample in iter_training_samples(
-            dataset_id,target="gen1-v",split="train",
-            media_column="video",caption_column="caption",
-            max_samples=max_samples,cache_dir=str(Path(cache_dir)/"openvid"),
-        ):
+    # Do not cap source rows: extraction failures are skipped by the pipeline,
+    # so keep scanning until max_samples usable videos are actually prepared.
+    for sample in iter_training_samples(
+        dataset_id,target="gen1-v",split="train",
+        media_column="video",caption_column="caption",
+        max_samples=None,cache_dir=str(Path(cache_dir)/"openvid"),
+    ):
+        if count>=max_samples: break
+        mode="a" if out.exists() and count>0 else "w"
+        with out.open(mode,encoding="utf-8") as f:
             f.write(json.dumps({"video":sample["video"],"caption":sample["caption"]},ensure_ascii=False)+"\n")
-            count+=1
-            print(f"OpenVid prepared: {count}/{max_samples}",flush=True)
+        count+=1
+        print(f"OpenVid prepared: {count}/{max_samples}",flush=True)
+        if count>=max_samples: break
     if count==0: raise ValueError("OpenVid returned no usable videos")
     print(f"OpenVid ready: {count} videos -> {out}",flush=True)
     return str(out)
